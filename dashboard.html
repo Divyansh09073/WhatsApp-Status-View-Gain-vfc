@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - VFC Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      background: linear-gradient(180deg, #0a0f1c, #000);
+      color: #00bfff;
+      font-family: 'Orbitron', sans-serif;
+    }
+    input, button, textarea {
+      background-color: #0d1b2a;
+      border: 1px solid #00bfff;
+      color: white;
+    }
+    input:focus, textarea:focus, button:hover {
+      border-color: #1ec4ff;
+      outline: none;
+    }
+  </style>
+</head>
+<body class="p-6">
+  <h1 class="text-3xl text-center mb-6">📋 Admin Dashboard</h1>
+
+  <div class="max-w-xl mx-auto">
+    <label class="block mb-2">Paste your group link (optional):</label>
+    <input type="text" id="groupLink" placeholder="https://t.me/joinchat/xxxx" class="w-full p-2 rounded mb-4" />
+    <button onclick="createVFC()" class="w-full p-2 rounded font-bold mb-6">Create New VFC Link</button>
+
+    <div id="myLinks" class="mt-6"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAoh5ym10IWnL3LtdPCrG8EAqn6aCo5Qfk",
+      authDomain: "vfc-generator.firebaseapp.com",
+      projectId: "vfc-generator",
+      storageBucket: "vfc-generator.firebasestorage.app",
+      messagingSenderId: "297256099256",
+      appId: "1:297256099256:web:737e887ee004ca9771834d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser;
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = "login.html";
+      } else {
+        currentUser = user;
+        loadMyVFCs();
+      }
+    });
+
+    function createVFC() {
+      const group = document.getElementById('groupLink').value;
+      const vfcID = Math.random().toString(36).substring(2, 10);
+      const data = {
+        owner: currentUser.uid,
+        groupLink: group,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        vfcID
+      };
+      db.collection("vfcs").doc(vfcID).set(data).then(() => {
+        alert("✅ VFC Link Created!");
+        loadMyVFCs();
+      });
+    }
+
+    function loadMyVFCs() {
+      db.collection("vfcs").where("owner", "==", currentUser.uid).get().then(snapshot => {
+        const container = document.getElementById("myLinks");
+        container.innerHTML = "";
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          const url = `${window.location.origin}/vfc.html?id=${d.vfcID}`;
+          container.innerHTML += `
+            <div class='mb-6 p-4 border rounded'>
+              <p class='mb-1'>🔗 <strong>Link:</strong> <a href='${url}' target='_blank' class='underline text-blue-300'>${url}</a></p>
+              ${d.groupLink ? `<p class='mb-1'>📥 <strong>Group:</strong> <a href='${d.groupLink}' target='_blank' class='underline text-green-300'>Join</a></p>` : ''}
+              <button onclick="exportVCF('${d.vfcID}')" class='mt-2 bg-blue-600 p-1 px-3 rounded'>⬇️ Export .vcf</button>
+            </div>
+          `;
+        });
+      });
+    }
+
+    function exportVCF(vfcID) {
+      window.location.href = `export.html?id=${vfcID}`;
+    }
+  </script>
+</body>
+</html>
